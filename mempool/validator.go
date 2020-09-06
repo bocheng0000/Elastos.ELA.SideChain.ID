@@ -273,8 +273,8 @@ func CreateCRIDContractByCode(code []byte) (*contract.Contract, error) {
 	}, nil
 }
 
-func getDIDAddress(publicKey []byte) (string,error) {
-	code , err := getCodeByPubKey(publicKey)
+func getDIDAddress(publicKey []byte) (string, error) {
+	code, err := getCodeByPubKey(publicKey)
 	if err != nil {
 		return "", err
 	}
