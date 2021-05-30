@@ -3,6 +3,7 @@ package blockchain
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"os"
 	"sort"
 	"strings"
@@ -16,7 +17,6 @@ import (
 	"github.com/elastos/Elastos.ELA.SideChain/events"
 	"github.com/elastos/Elastos.ELA.SideChain/types"
 	elacom "github.com/elastos/Elastos.ELA/common"
-	"github.com/elastos/Elastos.ELA/common/log"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 	"github.com/elastos/Elastos.ELA/utils"
 
@@ -95,9 +95,9 @@ var (
 )
 
 var (
-	MINING_ADDR  = elacom.Uint168{}
+	MINING_ADDR = elacom.Uint168{}
 	//ELA_ASSET, _ = elacom.Uint256FromHexString("b037db964a231458d2d6ffd5ea18944c4f90e63d547c5d3b9874df66a4ead0a3")
-	DBA          *common.Dba
+	DBA *common.Dba
 )
 
 //type IIterator interface {
@@ -245,9 +245,6 @@ func (c *ChainStoreExtend) persistTxHistory(blk *types.Block) error {
 		txhs := make([]idtypes.TransactionHistory, 0)
 		for i := 0; i < len(txs); i++ {
 			tx := txs[i]
-			if err != nil {
-				return err
-			}
 			var memo []byte
 			var txType = tx.TxType
 			for _, attr := range tx.Attributes {
@@ -417,7 +414,7 @@ func (c *ChainStoreExtend) CloseEx() {
 	c.quitEx <- closed
 	<-closed
 	c.Stop()
-	log.Info("Extend chainStore shutting down")
+	fmt.Println("Extend chainStore shutting down")
 }
 
 func (c *ChainStoreExtend) loop() {
@@ -429,12 +426,12 @@ func (c *ChainStoreExtend) loop() {
 			case *types.Block:
 				err := c.persistTxHistory(kind)
 				if err != nil {
-					log.Errorf("Error persist transaction history %s", err.Error())
+					fmt.Printf("Error persist transaction history %s", err.Error())
 					os.Exit(-1)
 					return
 				}
 				tcall := float64(time.Now().Sub(now)) / float64(time.Second)
-				log.Debugf("handle SaveHistory time cost: %g num transactions:%d", tcall, len(kind.Transactions))
+				fmt.Printf("handle SaveHistory time cost: %g num transactions:%d", tcall, len(kind.Transactions))
 			}
 		case closed := <-c.quitEx:
 			closed <- true
