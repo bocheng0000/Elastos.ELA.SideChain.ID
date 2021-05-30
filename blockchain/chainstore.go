@@ -7,7 +7,6 @@ import (
 	"time"
 
 	id "github.com/elastos/Elastos.ELA.SideChain.ID/types"
-
 	"github.com/elastos/Elastos.ELA.SideChain/blockchain"
 	"github.com/elastos/Elastos.ELA.SideChain/database"
 	"github.com/elastos/Elastos.ELA.SideChain/service"
@@ -20,6 +19,15 @@ const (
 	IX_DIDTXHash        blockchain.EntryPrefix = 0x95
 	IX_DIDPayload       blockchain.EntryPrefix = 0x96
 	IX_DIDExpiresHeight blockchain.EntryPrefix = 0x97
+)
+
+const (
+	RECEIVED                    string = "received"
+	SENT                        string = "sent"
+	MOVED                       string = "moved"
+	ELA                         uint64 = 100000000
+	CHECK_POINT_ROLLBACK_HEIGHT        = 100
+	//DPOS_CHECK_POINT                   = 290000
 )
 
 type IDChainStore struct {
