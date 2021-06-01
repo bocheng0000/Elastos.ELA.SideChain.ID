@@ -263,6 +263,7 @@ func newRPCServer(port uint16, service *sv.HttpService) *jsonrpc.Server {
 	s.RegisterAction("getnodestate", service.GetNodeState)
 	s.RegisterAction("sendrechargetransaction", service.SendRechargeToSideChainTxByHash)
 	s.RegisterAction("sendrawtransaction", service.SendRawTransaction, "data")
+	s.RegisterAction("gethistory", service.GetHistory, "address", "order", "skip", "limit", "timestamp")
 	s.RegisterAction("getreceivedbyaddress", service.GetReceivedByAddress, "address")
 	s.RegisterAction("getbestblockhash", service.GetBestBlockHash)
 	s.RegisterAction("getblockcount", service.GetBlockCount)
