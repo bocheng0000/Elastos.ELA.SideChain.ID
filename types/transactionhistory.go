@@ -8,7 +8,6 @@ import (
 
 	"github.com/elastos/Elastos.ELA.SideChain/types"
 	"github.com/elastos/Elastos.ELA/common"
-
 )
 
 //const (
@@ -35,18 +34,18 @@ type TransactionHistory struct {
 }
 
 type TransactionHistoryDisplay struct {
-	Address string   `json:"address"`
-	Txid    string   `json:"txid"`
-	Type    string   `json:"type"`
-	Value   string   `json:"value"`
-	Time    uint64   `json:"time"`
-	Height  uint64   `json:"height"`
-	Fee     string   `json:"fee"`
-	Inputs  []string `json:"inputs"`
-	Outputs []string `json:"outputs"`
-	TxType  types.TxType   `json:"txtype"`
-	Memo    string   `json:"memo"`
-	Status  string   `json:",omitempty"`
+	Address string       `json:"address"`
+	Txid    string       `json:"txid"`
+	Type    string       `json:"type"`
+	Value   string       `json:"value"`
+	Time    uint64       `json:"time"`
+	Height  uint64       `json:"height"`
+	Fee     string       `json:"fee"`
+	Inputs  []string     `json:"inputs"`
+	Outputs []string     `json:"outputs"`
+	TxType  types.TxType `json:"txtype"`
+	Memo    string       `json:"memo"`
+	Status  string       `json:",omitempty"`
 }
 
 func (th *TransactionHistory) Serialize(w io.Writer) error {
@@ -115,8 +114,10 @@ func (th *TransactionHistory) Serialize(w io.Writer) error {
 
 func (th *TransactionHistory) Deserialize(r io.Reader) (*TransactionHistoryDisplay, error) {
 	var err error
+
 	txhd := new(TransactionHistoryDisplay)
 	buf, err := common.ReadVarBytes(r, 1024, "address")
+	fmt.Println("buf, err := common.ReadVarBytes(r, 1024, \"address\")", err)
 	if err != nil {
 		return txhd, errors.New("[TransactionHistory], Address deserialize failed.")
 	}

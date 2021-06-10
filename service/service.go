@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/elastos/Elastos.ELA.SideChain.ID/blockchain"
@@ -403,7 +404,15 @@ func (s *HttpService) GetHistory(param http.Params) (interface{}, error) {
 		timestamp = 0
 	}
 
+	fmt.Println("~~~~~~ 1-start blockchain.StoreEx.GetTxHistoryByLimit ~~~~~~")
+	fmt.Println("address:",address)
+	fmt.Println("order:",order)
+	fmt.Println("skip:",skip)
+	fmt.Println("limit:",limit)
+	fmt.Println("timestamp:",timestamp)
 	txHistory, txCount := blockchain.StoreEx.GetTxHistoryByLimit(address, order, skip, limit, timestamp)
+	fmt.Println("txCount:",txCount)
+	fmt.Println("~~~~~~ 1-end blockchain.StoreEx.GetTxHistoryByLimit ~~~~~~")
 
 	result := RPCTransactionHistoryInfo{
 		TxHistory:  txHistory,

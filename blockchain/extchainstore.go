@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/elastos/Elastos.ELA.SideChain.ID/common"
 	idtypes "github.com/elastos/Elastos.ELA.SideChain.ID/types"
 	"github.com/elastos/Elastos.ELA.SideChain/blockchain"
 	"github.com/elastos/Elastos.ELA.SideChain/database"
@@ -19,8 +18,6 @@ import (
 	elacom "github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 	"github.com/elastos/Elastos.ELA/utils"
-
-	"github.com/robfig/cron"
 )
 
 // DataEntryPrefix
@@ -97,7 +94,6 @@ var (
 var (
 	MINING_ADDR = elacom.Uint168{}
 	//ELA_ASSET, _ = elacom.Uint256FromHexString("b037db964a231458d2d6ffd5ea18944c4f90e63d547c5d3b9874df66a4ead0a3")
-	DBA *common.Dba
 )
 
 //type IIterator interface {
@@ -141,7 +137,6 @@ type ChainStoreExtend struct {
 	taskChEx chan interface{}
 	quitEx   chan chan bool
 	mu       sync.RWMutex
-	*cron.Cron
 	rp         chan bool
 	checkPoint bool
 }
@@ -158,21 +153,12 @@ func NewChainStoreEx(chain *blockchain.BlockChain, chainstore IChainStore, fileP
 	if err != nil {
 		return nil, err
 	}
-	DBA, err = common.NewInstance(filePath)
-	if err != nil {
-		return nil, err
-	}
-	err = common.InitDb(DBA)
-	if err != nil {
-		return nil, err
-	}
 	c := &ChainStoreExtend{
 		IChainStore: chainstore,
 		IStore:      st,
 		chain:       chain,
 		taskChEx:    make(chan interface{}, 100),
 		quitEx:      make(chan chan bool, 1),
-		Cron:        cron.New(),
 		mu:          sync.RWMutex{},
 		rp:          make(chan bool, 1),
 		checkPoint:  true,
@@ -184,7 +170,6 @@ func NewChainStoreEx(chain *blockchain.BlockChain, chainstore IChainStore, fileP
 		p:    make(map[string][]byte),
 	}
 	go c.loop()
-	go c.initTask()
 	events.Subscribe(func(e *events.Event) {
 		switch e.Type {
 		case events.ETBlockConnected:
@@ -224,29 +209,45 @@ func (c *ChainStoreExtend) assembleRollbackBlock(rollbackStart uint32, blk *type
 func (c *ChainStoreExtend) persistTxHistory(blk *types.Block) error {
 	var blocks []*types.Block
 	var rollbackStart uint32 = 0
+	fmt.Println()
+	fmt.Println("@@@@@@ 3-start func (c *ChainStoreExtend) persistTxHistory(blk *types.Block) @@@@@@")
+	fmt.Println("c.checkPoint", c.checkPoint)
+
 	if c.checkPoint {
 		bestHeight, err := c.GetBestHeightExt()
+		fmt.Println("bestHeight", bestHeight)
 		if err == nil && bestHeight > CHECK_POINT_ROLLBACK_HEIGHT {
 			rollbackStart = bestHeight - CHECK_POINT_ROLLBACK_HEIGHT
 		}
+		fmt.Println("rollbackStart", rollbackStart)
 		c.assembleRollbackBlock(rollbackStart, blk, &blocks)
 		c.checkPoint = false
 	}
 
 	blocks = append(blocks, blk)
-
+	fmt.Println("len(blocks)", len(blocks))
+	fmt.Println("blocks", blocks)
 	for _, block := range blocks {
+		_height_block := block.GetHeight()
+		fmt.Println()
+		fmt.Println("Block-Height:", _height_block)
 		_, err := c.GetStoredHeightExt(block.GetHeight())
+		fmt.Println("err returned by c.GetStoredHeightExt(block.GetHeight()):", err)
 		if err == nil {
 			continue
 		}
 
 		txs := block.Transactions
+		fmt.Println("Block-Height:", _height_block, "len(tx):", len(txs))
 		txhs := make([]idtypes.TransactionHistory, 0)
 		for i := 0; i < len(txs); i++ {
 			tx := txs[i]
 			var memo []byte
 			var txType = tx.TxType
+			fmt.Println("Txid:", tx.Hash())
+			fmt.Println("TxType:", txType)
+			fmt.Println("Len(inputs):", len(tx.Inputs))
+			fmt.Println("Len(outputs):", len(tx.Outputs))
 			for _, attr := range tx.Attributes {
 				if attr.Usage == types.Memo {
 					memo = attr.Data
@@ -272,6 +273,7 @@ func (c *ChainStoreExtend) persistTxHistory(blk *types.Block) error {
 						txh.Memo = memo
 
 						hold[vout.ProgramHash] = vout.Value
+						fmt.Println("@@@@@@ 3-Coinbase txh:", txh, "@@@@@@")
 						txhsCoinBase = append(txhsCoinBase, txh)
 					} else {
 						hold[vout.ProgramHash] += vout.Value
@@ -281,6 +283,7 @@ func (c *ChainStoreExtend) persistTxHistory(blk *types.Block) error {
 					txhsCoinBase[i].Outputs = []elacom.Uint168{txhsCoinBase[i].Address}
 					txhsCoinBase[i].Value = hold[txhsCoinBase[i].Address]
 				}
+				fmt.Println("@@@@@@ 3-CoinBase txhsCoinBase:", txhsCoinBase, "@@@@@@")
 				txhs = append(txhs, txhsCoinBase...)
 			} else {
 				isCrossTx := false
@@ -379,6 +382,7 @@ func (c *ChainStoreExtend) persistTxHistory(blk *types.Block) error {
 						txh.Outputs = txOutput
 					}
 					txh.Memo = memo
+					fmt.Println("@@@@@@ 3-receive txh:", txh, "@@@@@@")
 					txhs = append(txhs, txh)
 				}
 
@@ -399,13 +403,18 @@ func (c *ChainStoreExtend) persistTxHistory(blk *types.Block) error {
 						txh.Outputs = toAddress
 					}
 					txh.Memo = memo
+					fmt.Println("@@@@@@ 3-spend txh:", txh, "@@@@@@")
 					txhs = append(txhs, txh)
 				}
 			}
 		}
+		fmt.Println("@@@@@@ 3 Block-Height:", _height_block, "len(txhs):", len(txhs), "@@@@@@")
+		fmt.Println("@@@@@@ 3 txhs:", txhs, "@@@@@@")
+		fmt.Println("@@@@@@ 3 go into persistTransactionHistory @@@@@@")
 		c.persistTransactionHistory(txhs)
 		c.persistStoredHeight(block.GetHeight())
 	}
+	fmt.Println("@@@@@@ 3-end func (c *ChainStoreExtend) persistTxHistory(blk *types.Block) @@@@@@")
 	return nil
 }
 
@@ -413,17 +422,20 @@ func (c *ChainStoreExtend) CloseEx() {
 	closed := make(chan bool)
 	c.quitEx <- closed
 	<-closed
-	c.Stop()
 	fmt.Println("Extend chainStore shutting down")
 }
 
 func (c *ChainStoreExtend) loop() {
+	fmt.Println("`````` 1-enter loop ``````")
 	for {
 		select {
 		case t := <-c.taskChEx:
 			now := time.Now()
 			switch kind := t.(type) {
 			case *types.Block:
+				fmt.Println()
+				fmt.Println("!!!!!! 2-start func (c *ChainStoreExtend) loop() !!!!!!")
+				fmt.Println("!!!!!!", kind, "!!!!!!")
 				err := c.persistTxHistory(kind)
 				if err != nil {
 					fmt.Printf("Error persist transaction history %s", err.Error())
@@ -432,11 +444,13 @@ func (c *ChainStoreExtend) loop() {
 				}
 				tcall := float64(time.Now().Sub(now)) / float64(time.Second)
 				fmt.Printf("handle SaveHistory time cost: %g num transactions:%d", tcall, len(kind.Transactions))
+				fmt.Println("!!!!!! 2-end func (c *ChainStoreExtend) loop() !!!!!!")
 			}
 		case closed := <-c.quitEx:
 			closed <- true
 			return
 		}
+		fmt.Println("`````` 1.1-end loop ``````")
 	}
 }
 
