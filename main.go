@@ -37,6 +37,7 @@ const (
 	DataDir    = "data"
 	ChainDir   = "chain"
 	SpvDir     = "spv"
+	ExtDir     = "ext"
 	nodePrefix = "did-"
 )
 
@@ -86,7 +87,6 @@ func main() {
 		eladlog.Fatalf("open chain store failed, %s", err)
 		os.Exit(1)
 	}
-	defer idChainStore.Close()
 
 	eladlog.Info("2. SPV module init")
 	genesisHash := activeNetParams.GenesisBlock.Hash()
@@ -143,6 +143,15 @@ func main() {
 		os.Exit(1)
 	}
 	chainCfg.Validator = blockchain.NewValidator(chain, spvService)
+
+	var chainStoreEx bc.IChainStoreExtend
+	chainStoreEx, err = bc.NewChainStoreEx(chain, chainCfg.ChainStore, filepath.Join(DataPath, DataDir, ExtDir))
+	if err != nil {
+		eladlog.Fatalf("BlockChain Extend Store initialize failed, %s", err)
+		os.Exit(1)
+	}
+	defer idChainStore.Close()
+	defer chainStoreEx.CloseEx()
 
 	mempoolCfg.Chain = chain
 	txPool := mp.New(&mempoolCfg)
@@ -271,6 +280,7 @@ func newRPCServer(port uint16, service *sv.HttpService) *jsonrpc.Server {
 	s.RegisterAction("getnodestate", service.GetNodeState)
 	s.RegisterAction("sendrechargetransaction", service.SendRechargeToSideChainTxByHash)
 	s.RegisterAction("sendrawtransaction", service.SendRawTransaction, "data")
+	s.RegisterAction("gethistory", service.GetHistory, "address", "order", "skip", "limit", "timestamp")
 	s.RegisterAction("getreceivedbyaddress", service.GetReceivedByAddress, "address")
 	s.RegisterAction("getbestblockhash", service.GetBestBlockHash)
 	s.RegisterAction("getblockcount", service.GetBlockCount)

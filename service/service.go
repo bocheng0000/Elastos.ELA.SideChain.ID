@@ -360,6 +360,58 @@ func (s *HttpService) ListUnspent(param http.Params) (interface{}, error) {
 	return results, nil
 }
 
+type RPCTransactionHistoryInfo struct {
+	TxHistory  interface{} `json:"txhistory"`
+	TotalCount uint64      `json:"totalcount"`
+}
+
+func (s *HttpService) GetHistory(param http.Params) (interface{}, error) {
+	if ok := service.CheckRPCServiceLevel(s.cfg.ConfigurationPermitted, config.TransactionPermitted); ok != nil {
+		return nil, http.NewError(int(service.InvalidMethod), "requesting method if out of service level")
+	}
+
+	address, ok := param.String("address")
+	if !ok {
+		return nil, errors.New("need a param called address")
+	}
+
+	_, err := common.Uint168FromAddress(address)
+	if err != nil {
+		return nil, errors.New("invalid address")
+	}
+
+	order, ok := param.String("order")
+	if ok {
+		if order != "asc" && order != "desc" {
+			return nil, errors.New("invalid order")
+		}
+	} else {
+		order = "desc"
+	}
+	skip, ok := param.Uint32("skip")
+	if !ok {
+		skip = 0
+	}
+	limit, ok := param.Uint32("limit")
+	if !ok {
+		limit = 10
+	} else if limit > 50 {
+		return nil, errors.New("invalid limit")
+	}
+	timestamp, ok := param.Uint32("timestamp")
+	if !ok {
+		timestamp = 0
+	}
+
+	txHistory, txCount := blockchain.StoreEx.GetTxHistoryByLimit(address, order, skip, limit, timestamp)
+
+	result := RPCTransactionHistoryInfo{
+		TxHistory:  txHistory,
+		TotalCount: uint64(txCount),
+	}
+	return result, nil
+}
+
 func GetTransactionInfoFromBytes(txInfoBytes []byte) (*service.TransactionInfo, error) {
 	var txInfo service.TransactionInfo
 	err := json.Unmarshal(txInfoBytes, &txInfo)
